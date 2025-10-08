@@ -1,6 +1,6 @@
 package ds
 
-// CartItem — М-М заявки–услуги
+// — М-М заявки–услуги
 type CartItem struct {
 	ID       int     `gorm:"primaryKey"`
 	CartID   int     `gorm:"not null;uniqueIndex:idx_cart_star"`

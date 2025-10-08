@@ -130,24 +130,7 @@ main {
     line-height: 1.2;
     letter-spacing: 0.30em;
 }
-/* ====== крестик удаления ====== */
-.star-card form.delete-star-form {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    margin: 0;
-}
 
-.star-card form.delete-star-form button {
-    background: #d83933;
-    color: #fff;                     /* белый крестик */
-    border: none;
-    font-size: 18px;
-    line-height: 1;
-    padding: 4px 8px;
-    cursor: pointer;
-    border-radius: 3px;
-}
 .add-to-cart-form {
     display: flex;
     align-items: center;
@@ -207,4 +190,12 @@ main {
 
 .add-star-btn button:hover {
     background-color: #218838; /* более тёмный зелёный при наведении */
+}
+.cart-icon.empty img {
+    opacity: 0.5;       /* полупрозрачная иконка */
+    pointer-events: none; /* полностью некликабельная */
+}
+
+.cart-icon.empty .cart-count {
+    color: #999;        /* серый счетчик */
 }

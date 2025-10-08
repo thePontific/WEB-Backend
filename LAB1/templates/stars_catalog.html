@@ -22,13 +22,21 @@
                 <div class="page-title-container">
                     <h1 class="page-title">Звезды галактики Андромеды</h1>
                         <div class="cart-in-title">
+                            {{if gt .cartItemsCount 0}}
+                            <!-- Корзина есть — кликабельна -->
                             <a href="/Andromeda/starscart/{{.cartID}}" class="cart-icon" style="position: relative;">
                                 <img src="http://127.0.0.1:9000/cardsandromeda/cart.png" alt="Starscart">
-                                {{if gt .cartItemsCount 0}}
                                 <span class="cart-count">{{.cartItemsCount}}</span>
-                                {{end}}
                             </a>
+                            {{else}}
+                            <!-- Корзина пустая — не кликабельна -->
+                            <div class="cart-icon empty" style="position: relative; cursor: not-allowed;">
+                                <img src="http://127.0.0.1:9000/cardsandromeda/cart.png" alt="Starscart">
+                                <span class="cart-count">0</span>
+                            </div>
+                            {{end}}
                         </div>
+
                 </div>
                     <form action="/Andromeda" method="GET" class="search-form-under-title">
                         <input type="text" name="starname" placeholder="Поиск звезды..." value="{{ .starname }}">
@@ -42,7 +50,7 @@
             <article class="star-card">
                 <a href="/Andromeda/star/{{ .ID }}">
 
-                    <!-- ИСПРАВЛЕННАЯ СТРОКА: как в корзине -->
+                    
                     <img src="{{$.minioService.GetImageURL .ImageName}}" alt="{{ .Title }}">
                     <h2>{{ .Title }}</h2>
                     <p>{{ .Distance }} св. лет</p>
@@ -55,11 +63,7 @@
                     <button type="submit">+</button>
                 </form>
 
-                <!-- Крестик для удаления -->
-                <form method="POST" action="/delete-star" class="delete-star-form">
-                    <input type="hidden" name="star_id" value="{{ .ID }}">
-                    <button type="submit">✖</button>
-                </form>
+            
             </article>
             {{ end }}
         </section>

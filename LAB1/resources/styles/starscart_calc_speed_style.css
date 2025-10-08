@@ -1,84 +1,154 @@
 /* cart_style.css */
-.cart-info {
-    border-radius: 8px;
-    margin: 20px auto;
+.cart-summary-footer {
+    max-width: 1160px;
+    margin: 20px auto 40px; 
+    padding: 10px 20px;
+    border-top: 2px solid #e0e0e0;
+    background: #fafafa;
+    border-radius: 10px;
+}
+
+.cart-summary-row {
+    display: flex;
+    justify-content: space-between;  
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap; /* на маленьких экранах перенос */
+}
+
+.cart-summary-row p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #000000;
+    white-space: nowrap;
+}
+
+
+/* ======================== */
+/* 📌 Заголовки над карточками — ВЫРАВНИВАНИЕ */
+/* ======================== */
+.cart-headers {
     max-width: 1200px;
+    margin: 20px auto 0;
+    padding: 0 20px;
+}
+
+.cart-headers .header-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;           /* как у карточек */
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.cart-headers .header-col {
+    font-weight: 600;
+    color: #000000;
+    font-size: 0.9rem;
+    display: flex;               /* чтобы работало центрирование */
+    justify-content: center;     
+    align-items: center;         /* по вертикали */
     text-align: center;
 }
 
-.cart-details p {
-    margin: 0;
-    font-size: 18px;
-    color: #000000;
+/* 📐 ширина колонок совпадает с карточками */
+.cart-headers .image-col {
+    width: 100px;
+    flex-shrink: 0;
 }
 
+.cart-headers .title-col {
+    flex: 1;
+    min-width: 120px;
+}
+
+.cart-headers .accuracy-col {
+    min-width: 190px;
+}
+
+.cart-headers .comment-col {
+    min-width: 200px;
+}
+
+.cart-headers .speed-col {
+    min-width: 120px;
+}
+
+/* ======================== */
+/* 📌 Карточки */
+/* ======================== */
 .cart-items {
     max-width: 1200px;
-    margin: 30px auto;
+    margin: 20px auto 30px;
     padding: 0 20px;
 }
 
 .cart-item-card {
     background: white;
     border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
 }
 
-/* Кружок изображения - УВЕЛИЧЕН */
+/* ======================== */
+/* 🪐 Картинка звезды */
+/* ======================== */
 .item-image {
     flex-shrink: 0;
 }
 
 .item-image img {
-    width: 200px;  /* Увеличено с 60px */
-    height: 200px; /* Увеличено с 60px */
+    width: 100px;
+    height: 100px;
     border-radius: 50%;
     object-fit: cover;
-
 }
 
-/* Название звезды */
+/* ======================== */
+/* 🌟 Название звезды */
+/* ======================== */
 .item-title {
     flex: 1;
-    min-width: 150px;
+    min-width: 120px;
 }
 
 .item-title h3 {
     margin: 0;
     color: #000000;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* Поля ввода/вывода */
+/* ======================== */
+/* 📝 Поля */
+/* ======================== */
 .item-field {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    min-width: 180px;
+    gap: 3px;
+    min-width: 140px;
 }
 
+/* Скрываем label внутри карточек */
 .item-field label {
-    font-weight: 600;
-    color: #000000;
-    font-size: 0.9rem;
-    margin-bottom: 2px;
+    display: none;
 }
 
 .item-field input,
 .item-field output {
-    padding: 10px 12px;
+    padding: 6px 10px;
     border: 2px solid #ddd;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     background: white;
 }
-
 
 .item-field output {
     background: #f8f9fa;
@@ -88,29 +158,34 @@
     align-items: center;
 }
 
-/* Стили для конкретных полей */
+/* ======================== */
+/* 🧮 Конкретные поля */
+/* ======================== */
 .accuracy-input {
     text-align: center;
-    width: 80px;
+    width: 60px;
 }
 
 .comment-input {
-    min-width: 200px;
+    min-width: 180px;
 }
 
 .speed-output {
     background: #f8f9fa !important; 
     color: #368055 !important;     
     font-weight: 500 !important;
-    min-width: 120px;
+    min-width: 110px;
 }
 
+/* ======================== */
+/* 🗑 Кнопка удаления */
+/* ======================== */
 .delete-button {
     background: linear-gradient(135deg, #ff4b5c, #ff6f61);
     color: #fff;
     font-weight: 600;
     font-size: 16px;
-    padding: 12px 25px;
+    padding: 10px 22px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
@@ -118,13 +193,4 @@
     transition: all 0.3s ease;
 }
 
-.delete-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    background: linear-gradient(135deg, #ff6f61, #ff4b5c);
-}
 
-.delete-button:active {
-    transform: translateY(0);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}

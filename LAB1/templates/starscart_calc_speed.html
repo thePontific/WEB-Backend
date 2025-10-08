@@ -18,55 +18,74 @@
 
     <main>
 
-        <section class="cart-info">
-            <div class="cart-details">
-                <p><strong>Количество заявок на расчет:</strong> {{.cartItemsCount}}</p>
+
+
+
+        <!-- 📌 Заголовки полей для всех карточек -->
+        <section class="cart-headers">
+            <div class="header-row">
+                <div class="header-col image-col"></div>
+                <div class="header-col title-col"></div>
+                <div class="header-col accuracy-col">
+                    <label>Точность расчета</label>
+                </div>
+                <div class="header-col comment-col">
+                    <label>Комментарий к расчету</label>
+                </div>
+                <div class="header-col speed-col">
+                    <label>Расчетная скорость</label>
+                </div>
             </div>
         </section>
 
+        <!-- 📌 Список карточек -->
         <section class="cart-items">
             {{range .cartItems}}
             <div class="cart-item-card">
-                <!-- Кружок изображения -->
-                <div class="item-image">
+                <!-- Картинка -->
+                <div class="item-image image-col">
                     <img src="{{$.minioService.GetImageURL .Star.ImageName}}" alt="{{.Star.Title}}">
                 </div>
                 
                 <!-- Название звезды -->
-                <div class="item-title">
+                <div class="item-title title-col">
                     <h3>{{.Star.Title}}</h3>
                 </div>
                 
-                <!-- Поле для ввода точности расчета -->
-                <div class="item-field">
-                    <label>Точность расчета:</label>
+                <!-- Поле точности -->
+                <div class="item-field accuracy-col">
                     <input type="number" value="2" min="0" max="10" class="accuracy-input" placeholder="0-10">
                 </div>
                 
-                <!-- Поле для ввода комментария -->
-                <div class="item-field">
-                    <label>Комментарий к расчету:</label>
+                <!-- Поле комментария -->
+                <div class="item-field comment-col">
                     <input type="text" value="{{.Comment}}" class="comment-input" placeholder="Введите комментарий">
                 </div>
                 
-                <!-- Поле для вывода расчетной скорости -->
-                <div class="item-field">
-                    <label>Расчетная скорость:</label>
+                <!-- Поле скорости -->
+                <div class="item-field speed-col">
                     <output class="speed-output">12 450 км/с</output>
                 </div>
             </div>
             {{end}}
         </section>
+        <section class="cart-summary-footer">
+            <div class="cart-summary-row">
+                <p><strong>Количество заявок:</strong> {{.cartItemsCount}}</p>
+                <p><strong>Средняя точность:</strong> 4.7</p>
+                <p><strong>Комментариев:</strong> 8 / 12</p>
+                <p><strong>Макс. скорость:</strong> 21 000 км/с</p>
+
+            </div>
+        </section>
         <section class="cart-actions">
-    <div style="text-align:center; margin-top:20px;">
-        <form method="POST" action="/delete-cart">
-            <input type="hidden" name="cart_id" value="{{.cart.ID}}">
-            <button type="submit" class="delete-button">Удалить заявку</button>
-        </form>
-    </div>
-</section>
-
-
+            <div style="text-align:center; margin-top:20px;">
+                <form method="POST" action="/delete-cart">
+                    <input type="hidden" name="cart_id" value="{{.cart.ID}}">
+                    <button type="submit" class="delete-button">Удалить заявку</button>
+                </form>
+            </div>
+        </section>
     </main>
 </body>
 </html>

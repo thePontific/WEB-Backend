@@ -26,8 +26,6 @@ func (h *Handler) RegisterHandler(router *gin.Engine) {
 	router.GET("/Andromeda/star/:id", h.GetStarDetails)
 	router.GET("/Andromeda/starscart/:id", h.GetCartDetails)
 
-	// Добавляем маршрут удаления услуги
-	router.POST("/delete-star", h.DeleteStar)
 	// Добавление звезды в корзину
 	router.POST("/cart/add", h.AddStarToCart)
 	router.POST("/delete-cart", h.DeleteCart)

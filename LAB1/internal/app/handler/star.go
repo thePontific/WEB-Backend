@@ -152,46 +152,41 @@ func (h *Handler) DeleteStar(ctx *gin.Context) {
 //ДОБАВЛЕНИЕ
 
 func (h *Handler) AddStarToCart(ctx *gin.Context) {
-	userID := 1 // временно фиксируем пользователя
+	userID := 1 // хардкод
 
 	starIDStr := ctx.PostForm("star_id")
 	quantityStr := ctx.PostForm("quantity")
 	comment := ctx.PostForm("comment")
 
+	// Конвертация ID звезды
 	starID, err := strconv.Atoi(starIDStr)
-	if err != nil {
+	if err != nil || starID <= 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "неверный ID звезды"})
 		return
 	}
 
+	// Конвертация количества
 	quantity, err := strconv.Atoi(quantityStr)
 	if err != nil || quantity < 1 {
 		quantity = 1
 	}
 
-	// Получаем черновую корзину пользователя
+	// Получаем черновую корзину
 	cart, err := h.Repository.GetDraftCartByCreatorID(userID)
-	if err != nil {
-		// если нет черновой корзины — создаём её
+	if err != nil || cart.ID == 0 {
 		cart = ds.Cart{
 			CreatorID:  userID,
 			Status:     ds.StatusDraft,
 			DateCreate: time.Now(),
 		}
-		if err := h.Repository.CreateCart(&cart); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := h.Repository.CreateCart(&cart); err != nil || cart.ID == 0 {
+			logrus.Errorf("Не удалось создать корзину: %v", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось создать корзину"})
 			return
 		}
-		// GORM автоматически заполняет cart.ID после Create
 	}
 
-	// Проверяем, что cart.ID реально установлен
-	if cart.ID == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось получить ID корзины"})
-		return
-	}
-
-	// Добавляем элемент в корзину
+	// Добавляем элемент
 	item := ds.CartItem{
 		CartID:   cart.ID,
 		StarID:   starID,
@@ -200,7 +195,8 @@ func (h *Handler) AddStarToCart(ctx *gin.Context) {
 	}
 
 	if err := h.Repository.AddCartItem(&item); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		logrus.Errorf("Ошибка добавления элемента в корзину: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось добавить элемент в корзину"})
 		return
 	}
 
@@ -209,11 +205,27 @@ func (h *Handler) AddStarToCart(ctx *gin.Context) {
 
 // ПОТОМ ЗАКИНУТЬ В КАРД ФАЙЛИК
 func (h *Handler) DeleteCart(ctx *gin.Context) {
-	cartIDStr := ctx.PostForm("cart_id")
-	cartID, _ := strconv.Atoi(cartIDStr)
+	userID := 1 // хардкод
 
-	err := h.Repository.RawDeleteCartByID(cartID)
+	cartIDStr := ctx.PostForm("cart_id")
+	cartID, err := strconv.Atoi(cartIDStr)
+	if err != nil || cartID <= 0 {
+		h.errorHandler(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	// Проверяем, что корзина принадлежит текущему пользователю
+	cart, err := h.Repository.GetCartByID(cartID)
 	if err != nil {
+		h.errorHandler(ctx, http.StatusNotFound, err)
+		return
+	}
+	if cart.CreatorID != userID {
+		h.errorHandler(ctx, http.StatusForbidden, nil)
+		return
+	}
+
+	if err := h.Repository.RawDeleteCartByID(cartID); err != nil {
 		h.errorHandler(ctx, http.StatusInternalServerError, err)
 		return
 	}
