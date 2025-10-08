@@ -10,13 +10,13 @@ func (r *Repository) GetUserByID(userID int) (ds.Users, error) {
 	}
 	return user, nil
 }
-func (r *Repository) GetDraftCartByCreatorID(creatorID int) (ds.Cart, error) {
-	var cart ds.Cart
+func (r *Repository) GetDraftCartByCreatorID(creatorID int) (ds.StarCart, error) {
+	var cart ds.StarCart
 	err := r.db.Preload("Items").
 		Where("creator_id = ? AND status = ?", creatorID, ds.StatusDraft).
 		First(&cart).Error
 	if err != nil {
-		return ds.Cart{}, err
+		return ds.StarCart{}, err
 	}
 	return cart, nil
 }

@@ -18,10 +18,10 @@ func main() {
 
 	// Migrate the schema: только 4 таблицы
 	err = db.AutoMigrate(
-		&ds.Star{},     // услуги
-		&ds.Cart{},     // заявки
-		&ds.CartItem{}, // М-М заявки–услуги
-		&ds.Users{},    // пользователи
+		&ds.Star{},         // услуги
+		&ds.StarCart{},     // заявки
+		&ds.StarCartItem{}, // М-М заявки–услуги
+		&ds.Users{},        // пользователи
 	)
 	if err != nil {
 		panic("cant migrate db")

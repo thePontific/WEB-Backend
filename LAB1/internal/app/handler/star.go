@@ -76,7 +76,7 @@ func (h *Handler) GetCartDetails(ctx *gin.Context) {
 
 	// Пытаемся получить корзину по ID из URL
 	cartIDStr := ctx.Param("id")
-	var cart ds.Cart
+	var cart ds.StarCart
 	var err error
 
 	if cartIDStr != "" {
@@ -93,7 +93,7 @@ func (h *Handler) GetCartDetails(ctx *gin.Context) {
 
 	// Если черновика всё ещё нет — создаём новый
 	if err != nil || cart.ID == 0 {
-		cart = ds.Cart{
+		cart = ds.StarCart{
 			CreatorID:  userID,
 			Status:     ds.StatusDraft,
 			DateCreate: time.Now(),
@@ -174,7 +174,7 @@ func (h *Handler) AddStarToCart(ctx *gin.Context) {
 	// Получаем черновую корзину
 	cart, err := h.Repository.GetDraftCartByCreatorID(userID)
 	if err != nil || cart.ID == 0 {
-		cart = ds.Cart{
+		cart = ds.StarCart{
 			CreatorID:  userID,
 			Status:     ds.StatusDraft,
 			DateCreate: time.Now(),
@@ -187,7 +187,7 @@ func (h *Handler) AddStarToCart(ctx *gin.Context) {
 	}
 
 	// Добавляем элемент
-	item := ds.CartItem{
+	item := ds.StarCartItem{
 		CartID:   cart.ID,
 		StarID:   starID,
 		Quantity: quantity,
