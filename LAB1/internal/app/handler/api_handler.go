@@ -48,15 +48,15 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	api.DELETE("/stars/:id", h.DeleteStar)
 	api.POST("/stars/:id/image", h.UploadStarImage)
 
-	// ====== Корзина / заявки ======
-	api.GET("/cart/icon", h.GetCartIcon)
-	api.GET("/cart", h.GetCarts)
-	api.GET("/cart/:id", h.GetCartDetails)
-	api.POST("/cart/add", h.AddStarToCart)
-	api.PUT("/cart/:id", h.UpdateCartHandler)
-	api.PUT("/cart/:id/form", h.FormCart)
-	api.PUT("/cart/:id/finish", h.FinishCart)
-	api.DELETE("/cart/:id", h.DeleteCart)
+	// ====== StarCart / заявки ======
+	api.GET("/starcart/icon", h.GetStarCartIcon)
+	api.GET("/starcart", h.GetStarCarts)
+	api.GET("/starcart/:id", h.GetStarCartDetails)
+	api.POST("/starcart/add", h.AddStarToStarCart)
+	api.PUT("/starcart/:id", h.UpdateStarCartHandler)
+	api.PUT("/starcart/:id/form", h.FormStarCart)
+	api.PUT("/starcart/:id/finish", h.FinishStarCart)
+	api.DELETE("/starcart/:id", h.DeleteStarCart)
 
 	// ====== Пользователи ======
 	api.POST("/users/register", h.RegisterUser)
@@ -65,8 +65,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	api.GET("/users/me", h.GetUser)
 	api.PUT("/users/me", h.UpdateUser)
 
-	api.DELETE("/cart/item/:id", h.DeleteCartItem)
-
+	api.DELETE("/starcart/item/:id", h.DeleteStarCartItem)
 }
 
 // ======================
@@ -140,11 +139,9 @@ func (h *Handler) DeleteStar(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	// TODO: удалить изображение через Minio
 	ctx.JSON(http.StatusOK, gin.H{"message": "star deleted"})
 }
 
-// Загрузка изображения
 func (h *Handler) UploadStarImage(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
@@ -164,7 +161,6 @@ func (h *Handler) UploadStarImage(ctx *gin.Context) {
 		return
 	}
 
-	// Обновляем Star в БД
 	star, _ := h.Repository.GetStar(id)
 	star.ImageName = fileName
 	h.Repository.UpdateStar(&star)
@@ -172,49 +168,82 @@ func (h *Handler) UploadStarImage(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"imageName": fileName})
 }
 
-// Получить список корзин с фильтрацией
-func (h *Handler) GetCarts(ctx *gin.Context) {
-	from := ctx.Query("from") // YYYY-MM-DD
+// ======================
+// ==== STARCART / ЗАЯВКИ ====
+// ======================
+func (h *Handler) GetStarCarts(ctx *gin.Context) {
+	from := ctx.Query("from")
 	to := ctx.Query("to")
 	status := ctx.Query("status")
 
-	carts, err := h.Repository.GetCartsFiltered(from, to, status)
+	carts, err := h.Repository.GetStarCartsFiltered(from, to, status)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, carts)
+
+	var response []gin.H
+	for _, c := range carts {
+		itemsCount := len(c.Items) // 📌 количество м-м записей
+		// 📊 считаем сумму quantity
+		var totalQty int
+		for _, item := range c.Items {
+			totalQty += item.Quantity
+		}
+
+		// 📈 считаем среднее значение
+		var avgAccuracy float64
+		if itemsCount > 0 {
+			avgAccuracy = float64(totalQty) / float64(itemsCount)
+		}
+		response = append(response, gin.H{
+			"id":               c.ID,
+			"creator_id":       c.CreatorID,
+			"status":           c.Status,
+			"date_create":      c.DateCreate,
+			"star_items_count": itemsCount, // ✅ добавили поле
+			"average_quantity": avgAccuracy,
+		})
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
-// Получить детали конкретной корзины
-func (h *Handler) GetCartDetails(ctx *gin.Context) {
+func (h *Handler) GetStarCartDetails(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	cart, err := h.Repository.GetCartByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "cart not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "starcart not found"})
 		return
 	}
 
-	// Собираем элементы с изображениями
 	var items []gin.H
 	for _, item := range cart.Items {
 		star, _ := h.Repository.GetStar(item.StarID)
 		items = append(items, gin.H{
-			"star":     star,
-			"quantity": item.Quantity,
-			"comment":  item.Comment,
-			"imageURL": h.MinioService.GetImageURL(star.ImageName),
+			"star_id":   star.ID,
+			"title":     star.Title,
+			"quantity":  item.Quantity,
+			"speed":     item.Speed,
+			"comment":   item.Comment,
+			"image_url": h.MinioService.GetImageURL(star.ImageName),
 		})
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"cart":  cart,
-		"items": items,
+		"id":            cart.ID,
+		"status":        cart.Status,
+		"date_create":   cart.DateCreate,
+		"creator_id":    cart.CreatorID,
+		"comment":       cart.Comment,
+		"date_formed":   cart.DateFormed,
+		"date_finished": cart.DateFinished,
+		"items_count":   len(items),
+		"items":         items,
 	})
 }
 
-// Обновление корзины (изменение количества/комментариев)
-func (h *Handler) UpdateCartHandler(ctx *gin.Context) {
+func (h *Handler) UpdateStarCartHandler(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	var input []ds.StarCartItem
 	if err := ctx.ShouldBindJSON(&input); err != nil {
@@ -224,28 +253,27 @@ func (h *Handler) UpdateCartHandler(ctx *gin.Context) {
 
 	_, err := h.Repository.GetCartByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "cart not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "starcart not found"})
 		return
 	}
 
 	for _, item := range input {
-		h.Repository.UpdateCartItem(&item)
+		h.Repository.UpdateStarCartItem(&item)
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Корзина обновлена"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "StarCart updated"})
 }
 
-// Формирование корзины (создатель)
-func (h *Handler) FormCart(ctx *gin.Context) {
+func (h *Handler) FormStarCart(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	cart, err := h.Repository.GetCartByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "cart not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "starcart not found"})
 		return
 	}
 
 	if cart.Status != ds.StatusDraft {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "cart not draft"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "starcart not draft"})
 		return
 	}
 
@@ -261,21 +289,20 @@ func (h *Handler) FormCart(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, cart)
 }
 
-// Завершение / отклонение корзины (модератор)
-func (h *Handler) FinishCart(ctx *gin.Context) {
+func (h *Handler) FinishStarCart(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	cart, err := h.Repository.GetCartByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "cart not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "starcart not found"})
 		return
 	}
 
 	if cart.Status != ds.StatusCreated {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "cart not formed"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "starcart not formed"})
 		return
 	}
 
-	action := ctx.Query("action") // complete / reject
+	action := ctx.Query("action")
 	now := time.Now()
 
 	if action == "complete" {
@@ -289,7 +316,6 @@ func (h *Handler) FinishCart(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: вычисления стоимости, доставки, м-м
 	if err := h.Repository.UpdateCart(&cart); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -298,12 +324,11 @@ func (h *Handler) FinishCart(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, cart)
 }
 
-// Удаление корзины (создатель)
-func (h *Handler) DeleteCart(ctx *gin.Context) {
+func (h *Handler) DeleteStarCart(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	cart, err := h.Repository.GetCartByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "cart not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "starcart not found"})
 		return
 	}
 
@@ -312,30 +337,28 @@ func (h *Handler) DeleteCart(ctx *gin.Context) {
 		return
 	}
 
-	err = h.Repository.RawDeleteCartByID(id)
+	// ⚡ Вместо удаления — логическое обновление статуса
+	err = h.Repository.MarkStarCartAsDeleted(id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "cart deleted"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "starcart logically deleted"})
 }
 
-// ======================
-// ==== КОРЗИНА / ЗАЯВКИ ====
-// ======================
-func (h *Handler) GetCartIcon(ctx *gin.Context) {
+func (h *Handler) GetStarCartIcon(ctx *gin.Context) {
 	userID := CurrentUserID()
 	cart, err := h.Repository.GetDraftCartByCreatorID(userID)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"cartID": 0, "itemsCount": 0})
+		ctx.JSON(http.StatusOK, gin.H{"starcartID": 0, "itemsCount": 0})
 		return
 	}
 	count, _ := h.Repository.CountCartItems(cart.ID)
-	ctx.JSON(http.StatusOK, gin.H{"cartID": cart.ID, "itemsCount": count})
+	ctx.JSON(http.StatusOK, gin.H{"starcartID": cart.ID, "itemsCount": count})
 }
 
-func (h *Handler) AddStarToCart(ctx *gin.Context) {
+func (h *Handler) AddStarToStarCart(ctx *gin.Context) {
 	userID := CurrentUserID()
 	starID, _ := strconv.Atoi(ctx.PostForm("star_id"))
 	qty, _ := strconv.Atoi(ctx.PostForm("quantity"))
@@ -350,11 +373,24 @@ func (h *Handler) AddStarToCart(ctx *gin.Context) {
 	}
 	item := ds.StarCartItem{CartID: cart.ID, StarID: starID, Quantity: qty, Comment: comment}
 	h.Repository.AddCartItem(&item)
-	ctx.JSON(http.StatusOK, gin.H{"message": "Звезда добавлена в корзину"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Star added to StarCart"})
 }
 
-// TODO: остальные методы: GetCarts, GetCartDetails, UpdateCartHandler, FormCart, FinishCart, DeleteCart
-// Они будут аналогично реализованы через Repository
+func (h *Handler) DeleteStarCartItem(ctx *gin.Context) {
+	itemID, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid item ID"})
+		return
+	}
+
+	err = h.Repository.DeleteStarCartItemByID(itemID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "item deleted"})
+}
 
 // ======================
 // ==== ПОЛЬЗОВАТЕЛИ ====
@@ -397,21 +433,4 @@ func (h *Handler) UpdateUser(ctx *gin.Context) {
 	input.ID = userID
 	h.Repository.UpdateUser(&input)
 	ctx.JSON(http.StatusOK, input)
-}
-
-// Удаление элемента из корзины
-func (h *Handler) DeleteCartItem(ctx *gin.Context) {
-	itemID, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid item ID"})
-		return
-	}
-
-	err = h.Repository.DeleteCartItemByID(itemID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"message": "item deleted"})
 }

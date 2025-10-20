@@ -40,3 +40,8 @@ func (r *Repository) RawDeleteCartByID(cartID int) error {
 		ds.StatusDeleted, time.Now(), cartID,
 	).Error
 }
+func (r *Repository) MarkStarCartAsDeleted(id int) error {
+	query := `UPDATE starcarts SET status = ? WHERE id = ?`
+	result := r.db.Exec(query, "удалён", id)
+	return result.Error
+}

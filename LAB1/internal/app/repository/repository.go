@@ -22,7 +22,7 @@ func New(dsn string) (*Repository, error) {
 	}, nil
 
 }
-func (r *Repository) GetCartsFiltered(from, to, status string) ([]ds.StarCart, error) {
+func (r *Repository) GetStarCartsFiltered(from, to, status string) ([]ds.StarCart, error) {
 	var carts []ds.StarCart
 	q := r.db.Preload("Items").Where("status != ?", ds.StatusDeleted)
 	if status != "" {
@@ -63,7 +63,7 @@ func (r *Repository) UpdateUser(user *ds.Users) error {
 }
 
 // UpdateCartItem обновляет количество и комментарий элемента корзины
-func (r *Repository) UpdateCartItem(item *ds.StarCartItem) error {
+func (r *Repository) UpdateStarCartItem(item *ds.StarCartItem) error {
 	return r.db.Model(&ds.StarCartItem{}).
 		Where("cart_id = ? AND star_id = ?", item.CartID, item.StarID).
 		Updates(map[string]interface{}{
@@ -71,7 +71,7 @@ func (r *Repository) UpdateCartItem(item *ds.StarCartItem) error {
 			"comment":  item.Comment,
 		}).Error
 }
-func (r *Repository) DeleteCartItemByID(id int) error {
+func (r *Repository) DeleteStarCartItemByID(id int) error {
 	tx := r.db.Exec("DELETE FROM star_cart_items WHERE id = ?", id)
 	return tx.Error
 }
