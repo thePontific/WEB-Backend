@@ -6,6 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
+	_ "LAB1/docs" // 👉 Swagger docs (путь должен совпадать с папкой docs после генерации)
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"LAB1/internal/app/config"
 	"LAB1/internal/app/dsn"
 	"LAB1/internal/app/handler"
@@ -14,8 +19,26 @@ import (
 	"LAB1/internal/service"
 )
 
+// @title StarCart API
+// @version 1.0
+// @description Backend для управления заявками и звездами (Лабораторная 4)
+
+// @contact.name API Support
+// @contact.url https://example.com/support
+// @contact.email support@example.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api
+// @schemes http
 func main() {
 	router := gin.Default()
+
+	// 📘 Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	conf, err := config.NewConfig()
 	if err != nil {
 		logrus.Fatalf("error loading config: %v", err)

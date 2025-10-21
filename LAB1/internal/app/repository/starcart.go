@@ -45,3 +45,10 @@ func (r *Repository) MarkStarCartAsDeleted(id int) error {
 	result := r.db.Exec(query, "удалён", id)
 	return result.Error
 }
+func (r *Repository) GetStarCartItemByID(id int) (ds.StarCartItem, error) {
+	var item ds.StarCartItem
+	if err := r.db.First(&item, id).Error; err != nil {
+		return ds.StarCartItem{}, err
+	}
+	return item, nil
+}
