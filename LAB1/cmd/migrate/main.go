@@ -21,7 +21,7 @@ func main() {
 		&ds.Star{},         // услуги
 		&ds.StarCart{},     // заявки
 		&ds.StarCartItem{}, // М-М заявки–услуги
-		&ds.Users{},        // пользователи
+		&ds.User{},         // пользователи
 	)
 	if err != nil {
 		panic("cant migrate db")

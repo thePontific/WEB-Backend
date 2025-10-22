@@ -1,0 +1,6 @@
+# НАСТРОЙКИ Redis
+[Redis]
+
+# Таймауты в миллисекундах
+DialTimeout = "10s"
+ReadTimeout = "10s"

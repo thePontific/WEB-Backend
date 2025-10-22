@@ -1,20 +1,28 @@
 package handler
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 
 	"LAB1/internal/app/ds"
 	"LAB1/internal/app/repository"
+	"LAB1/internal/app/role"
 	"LAB1/internal/service"
 )
 
 type Handler struct {
 	Repository   *repository.Repository
 	MinioService *service.MinioService
+	JWTSecret    string
 }
 
 // CurrentUserID — фиксированный создатель для лабораторной
@@ -22,10 +30,11 @@ func CurrentUserID() int {
 	return 1
 }
 
-func NewHandler(r *repository.Repository, ms *service.MinioService) *Handler {
+func NewHandler(r *repository.Repository, ms *service.MinioService, jwtSecret string) *Handler {
 	return &Handler{
 		Repository:   r,
 		MinioService: ms,
+		JWTSecret:    jwtSecret,
 	}
 }
 
@@ -40,37 +49,36 @@ func (h *Handler) RegisterStatic(router *gin.Engine) {
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api")
 
-	// ====== Звёзды / услуги ======
-	api.GET("/stars", h.GetStars)
-	api.GET("/stars/:id", h.GetStarDetails)
-	api.POST("/stars", h.CreateStar)
-	api.PUT("/stars/:id", h.UpdateStar)
-	api.DELETE("/stars/:id", h.DeleteStar)
-	api.POST("/stars/:id/image", h.UploadStarImage)
-
-	// ====== StarCart / заявки ======
-	api.GET("/starcart/icon", h.GetStarCartIcon)
-	api.GET("/starcart", h.GetStarCarts)
-	api.POST("/starcart/add", h.AddStarToStarCart)
-
-	// Группа маршрутов для конкретной корзины
-	cart := api.Group("/starcart/:cartID")
-	{
-		cart.GET("", h.GetStarCartDetails)             // GET /api/starcart/:cartID
-		cart.PUT("", h.UpdateStarCartHandler)          // PUT /api/starcart/:cartID
-		cart.PUT("/form", h.FormStarCart)              // PUT /api/starcart/:cartID/form
-		cart.PUT("/finish", h.FinishStarCart)          // PUT /api/starcart/:cartID/finish
-		cart.PUT("/item/:id", h.UpdateStarCartItem)    // PUT /api/starcart/:cartID/item/:id
-		cart.DELETE("/item/:id", h.DeleteStarCartItem) // DELETE /api/starcart/:cartID/item/:id
-		cart.DELETE("", h.DeleteStarCart)              // DELETE /api/starcart/:cartID
-	}
-
-	// ====== Пользователи ======
-	api.POST("/users/register", h.RegisterUser)
+	// открытые маршруты
 	api.POST("/users/login", h.LoginUser)
-	api.POST("/users/logout", h.LogoutUser)
-	api.GET("/users/me", h.GetUser)
-	api.PUT("/users/me", h.UpdateUser)
+	api.POST("/users/register", h.RegisterUser)
+
+	// защищённые маршруты (JWT обязателен)
+	protected := api.Group("/")
+	protected.Use(JWTMiddleware(h.JWTSecret))
+
+	// Доступ к информации о себе
+	protected.GET("/users/me", h.GetUser)
+	protected.PUT("/users/me", h.UpdateUser)
+
+	// Работа со звёздами
+	protected.GET("/stars", h.GetStars)           // все роли
+	protected.GET("/stars/:id", h.GetStarDetails) // все роли
+	protected.POST("/stars", h.WithAuthCheck(role.Manager, role.Admin), h.CreateStar)
+	protected.PUT("/stars/:id", h.WithAuthCheck(role.Manager, role.Admin), h.UpdateStar)
+	protected.DELETE("/stars/:id", h.WithAuthCheck(role.Manager, role.Admin), h.DeleteStar)
+	protected.POST("/stars/:id/image", h.WithAuthCheck(role.Manager, role.Admin), h.UploadStarImage)
+
+	// StarCart
+	protected.GET("/starcart/icon", h.GetStarCartIcon)                                    // все роли могут смотреть свои корзины
+	protected.GET("/starcart", h.WithAuthCheck(role.Manager, role.Admin), h.GetStarCarts) // только менеджер/админ видят все корзины
+	protected.POST("/starcart/add", h.AddStarToStarCart)                                  // все роли могут добавлять
+	protected.PUT("/starcart/:cartID", h.AddStarToStarCart)                               // Buyer может менять только свои корзины, проверка в handler
+	protected.PUT("/starcart/:cartID/form", h.AddStarToStarCart)                          // Buyer может менять только свои корзины, проверка в handler
+	protected.PUT("/starcart/:cartID/finish", h.WithAuthCheck(role.Manager, role.Admin), h.FinishStarCart)
+	protected.PUT("/starcart/:cartID/item/:id", h.AddStarToStarCart)    // Buyer может менять только свои items, проверка в handler
+	protected.DELETE("/starcart/:cartID/item/:id", h.AddStarToStarCart) // Buyer может менять только свои items, проверка в handler
+	protected.DELETE("/starcart/:cartID", h.AddStarToStarCart)          // Buyer может удалять только свои корзины, проверка в handler
 }
 
 // м-к-м пут
@@ -646,18 +654,46 @@ func (h *Handler) DeleteStarCartItem(ctx *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/users/register [post]
+type registerReq struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+type registerResp struct {
+	Ok bool `json:"ok"`
+}
+
 func (h *Handler) RegisterUser(ctx *gin.Context) {
-	var input ds.Users
-	if err := ctx.ShouldBindJSON(&input); err != nil {
+	var req registerReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err := h.Repository.CreateUser(&input)
-	if err != nil {
+
+	if req.Login == "" || req.Password == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "login or password is empty"})
+		return
+	}
+
+	user := &ds.User{
+		UUID:     uuid.New(),
+		Login:    req.Login,
+		Password: generateHash(req.Password),
+		Role:     role.Buyer, // дефолтная роль
+	}
+
+	if err := h.Repository.Register(user); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusCreated, input)
+
+	ctx.JSON(http.StatusOK, registerResp{Ok: true})
+}
+
+func generateHash(password string) string {
+	h := sha1.New()
+	h.Write([]byte(password))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // LoginUser godoc
@@ -667,7 +703,53 @@ func (h *Handler) RegisterUser(ctx *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /api/users/login [post]
 func (h *Handler) LoginUser(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{"message": "login placeholder"})
+	var req loginReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.Repository.GetUserByLogin(req.Login)
+	if err != nil || user.Password != generateHash(req.Password) {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	// Добавляем роль пользователя в claims
+	claims := &ds.JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "lab1",
+		},
+		UserUUID: user.UUID,
+		Role:     user.Role, // вот это поле
+		Scopes:   []string{"read", "write"},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	strToken, err := token.SignedString([]byte(h.JWTSecret))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cant create token"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, loginResp{
+		ExpiresIn:   24 * 3600,
+		AccessToken: strToken,
+		TokenType:   "Bearer",
+	})
+}
+
+type loginReq struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+type loginResp struct {
+	ExpiresIn   int64  `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
 }
 
 // LogoutUser godoc
@@ -687,9 +769,23 @@ func (h *Handler) LogoutUser(ctx *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/users/me [get]
 func (h *Handler) GetUser(ctx *gin.Context) {
-	userID := CurrentUserID()
-	user, _ := h.Repository.GetUserByID(userID)
-	ctx.JSON(http.StatusOK, gin.H{"login": user.Login, "isModerator": user.IsModerator})
+	userUUID, err := h.getUserUUIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.Repository.GetUserByUUID(userUUID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"uuid":  user.UUID,
+		"login": user.Login,
+		"role":  user.Role,
+	})
 }
 
 // UpdateUser godoc
@@ -702,13 +798,53 @@ func (h *Handler) GetUser(ctx *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Router /api/users/me [put]
 func (h *Handler) UpdateUser(ctx *gin.Context) {
-	userID := CurrentUserID()
-	var input ds.Users
+	userUUID, err := h.getUserUUIDFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	var input ds.User
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	input.ID = userID
-	h.Repository.UpdateUser(&input)
+
+	if input.Password != "" {
+		input.Password = generateHash(input.Password)
+	}
+
+	if err := h.Repository.UpdateUserByUUID(userUUID, &input); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, input)
+}
+
+func (h *Handler) getUserUUIDFromContext(ctx *gin.Context) (uuid.UUID, error) {
+	authHeader := ctx.GetHeader("Authorization")
+	if authHeader == "" {
+		return uuid.Nil, errors.New("authorization header missing")
+	}
+
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return uuid.Nil, errors.New("invalid authorization header format")
+	}
+
+	tokenStr := parts[1]
+	token, err := jwt.ParseWithClaims(tokenStr, &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(h.JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return uuid.Nil, errors.New("invalid token")
+	}
+
+	claims, ok := token.Claims.(*ds.JWTClaims)
+	if !ok {
+		return uuid.Nil, errors.New("invalid token claims")
+	}
+
+	return claims.UserUUID, nil
 }

@@ -53,12 +53,12 @@ func (r *Repository) UpdateStar(star *ds.Star) error {
 }
 
 // Создание пользователя
-func (r *Repository) CreateUser(user *ds.Users) error {
+func (r *Repository) CreateUser(user *ds.User) error {
 	return r.db.Create(user).Error
 }
 
 // Обновление пользователя
-func (r *Repository) UpdateUser(user *ds.Users) error {
+func (r *Repository) UpdateUser(user *ds.User) error {
 	return r.db.Save(user).Error
 }
 
