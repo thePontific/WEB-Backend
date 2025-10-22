@@ -9,15 +9,7 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {
-            "name": "API Support",
-            "url": "https://example.com/support",
-            "email": "support@example.com"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -25,6 +17,11 @@ const docTemplate = `{
     "paths": {
         "/api/starcart": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -184,8 +181,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/starcart/{id}": {
+        "/api/starcart/{cartID}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -197,7 +199,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "ID заявки",
-                        "name": "id",
+                        "name": "cartID",
                         "in": "path",
                         "required": true
                     }
@@ -221,6 +223,232 @@ const docTemplate = `{
                     }
                 }
             },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "StarCart"
+                ],
+                "summary": "Удалить заявку (логически)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "cartID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/starcart/{cartID}/finish": {
+            "put": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "StarCart"
+                ],
+                "summary": "Завершить заявку (одобрить/отклонить)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "cartID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "complete или reject",
+                        "name": "action",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ds.StarCart"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/starcart/{cartID}/form": {
+            "put": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "StarCart"
+                ],
+                "summary": "Сформировать заявку",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "cartID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ds.StarCart"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/starcart/{cartID}/item/{id}": {
+            "put": {
+                "description": "Изменяет количество, комментарий или скорость для конкретного элемента в заявке",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "StarCartItem"
+                ],
+                "summary": "Обновить элемент заявки (м-м связь)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "cartID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID элемента в заявке",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для обновления",
+                        "name": "item",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.StarCartItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/starcart/{id}": {
             "put": {
                 "consumes": [
                     "application/json"
@@ -273,157 +501,15 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "StarCart"
-                ],
-                "summary": "Удалить заявку (логически)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID заявки",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/starcart/{id}/finish": {
-            "put": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "StarCart"
-                ],
-                "summary": "Завершить заявку (одобрить/отклонить)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID заявки",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "complete или reject",
-                        "name": "action",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/ds.StarCart"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/starcart/{id}/form": {
-            "put": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "StarCart"
-                ],
-                "summary": "Сформировать заявку",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID заявки",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/ds.StarCart"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
             }
         },
         "/api/stars": {
             "get": {
-                "description": "Возвращает список всех звёзд или ищет по названию",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -716,6 +802,10 @@ const docTemplate = `{
         },
         "/api/users/login": {
             "post": {
+                "description": "Логиним пользователя",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -723,9 +813,26 @@ const docTemplate = `{
                     "Users"
                 ],
                 "summary": "Вход пользователя",
+                "parameters": [
+                    {
+                        "description": "Данные для входа",
+                        "name": "login",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.LoginRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.loginResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -795,7 +902,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.Users"
+                            "$ref": "#/definitions/ds.User"
                         }
                     }
                 ],
@@ -803,7 +910,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/ds.Users"
+                            "$ref": "#/definitions/ds.User"
                         }
                     },
                     "400": {
@@ -837,7 +944,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.Users"
+                            "$ref": "#/definitions/handler.registerReq"
                         }
                     }
                 ],
@@ -845,89 +952,11 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/ds.Users"
+                            "$ref": "#/definitions/handler.registerResp"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/starcart/{cartID}/item/{id}": {
-            "put": {
-                "description": "Изменяет количество, комментарий или скорость для конкретного элемента в заявке",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "StarCartItem"
-                ],
-                "summary": "Обновить элемент заявки (м-м связь)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID заявки",
-                        "name": "cartID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "ID элемента в заявке",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для обновления",
-                        "name": "item",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ds.StarCartItem"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1000,46 +1029,49 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "comment": {
-                    "description": "Пример поля предметной области",
                     "type": "string"
                 },
+                "creator": {
+                    "description": "Связи",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ds.User"
+                        }
+                    ]
+                },
                 "creatorID": {
-                    "description": "Создатель (пользователь)",
-                    "type": "integer"
+                    "description": "Теперь UUID!",
+                    "type": "string"
                 },
                 "dateCreate": {
-                    "description": "Дата создания",
                     "type": "string"
                 },
                 "dateFinished": {
-                    "description": "Дата завершения заявки (действие модератора)",
                     "type": "string"
                 },
                 "dateFormed": {
-                    "description": "Дата формирования заявки (действие создателя)",
                     "type": "string"
                 },
                 "id": {
-                    "description": "ID заявки",
                     "type": "integer"
                 },
                 "items": {
-                    "description": "Элементы заявки",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ds.StarCartItem"
                     }
                 },
+                "moderator": {
+                    "$ref": "#/definitions/ds.User"
+                },
                 "moderatorID": {
-                    "description": "Модератор (nullable, пока не назначен)",
-                    "type": "integer"
+                    "description": "И moderator тоже UUID",
+                    "type": "string"
                 },
                 "priority": {
-                    "description": "пример дополнительного поля",
                     "type": "string"
                 },
                 "status": {
-                    "description": "Статус",
                     "type": "string"
                 }
             }
@@ -1080,15 +1112,33 @@ const docTemplate = `{
                 }
             }
         },
-        "ds.Users": {
+        "ds.User": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
+                "login": {
+                    "description": "уникальный логин",
+                    "type": "string"
                 },
-                "isModerator": {
-                    "type": "boolean"
+                "password": {
+                    "type": "string"
                 },
+                "role": {
+                    "description": "0 = Buyer",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/role.Role"
+                        }
+                    ]
+                },
+                "uuid": {
+                    "description": "UUID как primary key",
+                    "type": "string"
+                }
+            }
+        },
+        "handler.LoginRequest": {
+            "type": "object",
+            "properties": {
                 "login": {
                     "type": "string"
                 },
@@ -1096,6 +1146,70 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "handler.loginResp": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.registerReq": {
+            "type": "object",
+            "properties": {
+                "login": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.registerResp": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "role.Role": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-comments": {
+                "Admin": "2",
+                "Buyer": "0",
+                "Manager": "1"
+            },
+            "x-enum-descriptions": [
+                "0",
+                "1",
+                "2"
+            ],
+            "x-enum-varnames": [
+                "Buyer",
+                "Manager",
+                "Admin"
+            ]
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
@@ -1104,8 +1218,8 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
-	BasePath:         "/api",
-	Schemes:          []string{"http"},
+	BasePath:         "",
+	Schemes:          []string{},
 	Title:            "StarCart API",
 	Description:      "Backend для управления заявками и звездами (Лабораторная 4)",
 	InfoInstanceName: "swagger",

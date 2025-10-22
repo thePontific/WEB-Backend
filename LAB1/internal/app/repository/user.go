@@ -58,11 +58,8 @@ func (r *Repository) UpdateUserByUUID(userUUID uuid.UUID, updated *ds.User) erro
 
 	return r.db.Save(&user).Error
 }
-func (r *Repository) GetDraftCartByCreatorID(userID int) (ds.StarCart, error) {
+func (r *Repository) GetDraftCartByCreatorID(creatorID uuid.UUID) (ds.StarCart, error) {
 	var cart ds.StarCart
-	err := r.db.Where("creator_id = ? AND status = ?", userID, ds.StatusDraft).First(&cart).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ds.StarCart{}, err
-	}
+	err := r.db.Where("creator_id = ? AND status = ?", creatorID, ds.StatusDraft).First(&cart).Error
 	return cart, err
 }

@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,9 @@ import (
 
 	"LAB1/internal/app/config"
 	"LAB1/internal/app/handler"
+	"LAB1/internal/app/redis"
+	"LAB1/internal/app/repository"
+	"LAB1/internal/service"
 )
 
 type Application struct {
@@ -16,7 +20,19 @@ type Application struct {
 	Handler *handler.Handler
 }
 
-func NewApp(c *config.Config, r *gin.Engine, h *handler.Handler) *Application {
+func NewApp(ctx context.Context, c *config.Config, r *gin.Engine, repo *repository.Repository) *Application {
+	// Инициализируем MinIO
+	minioService := service.NewMinioService()
+
+	// ✅ Инициализируем Redis (обрати внимание на cfg.Redis)
+	redisClient, err := redis.New(ctx, c.Redis)
+	if err != nil {
+		logrus.Fatalf("failed to connect to Redis: %v", err)
+	}
+
+	// Создаём Handler
+	h := handler.NewHandler(repo, minioService, redisClient, c.JWTSecret)
+
 	return &Application{
 		Config:  c,
 		Router:  r,
@@ -26,12 +42,6 @@ func NewApp(c *config.Config, r *gin.Engine, h *handler.Handler) *Application {
 
 func (a *Application) RunApp() {
 	logrus.Info("Server start up")
-
-	// Регистрируем статику и шаблоны
-	a.Handler.RegisterStatic(a.Router)
-
-	// Регистрируем все маршруты API
-	a.Handler.RegisterRoutes(a.Router)
 
 	serverAddress := fmt.Sprintf("%s:%d", a.Config.ServiceHost, a.Config.ServicePort)
 	if err := a.Router.Run(serverAddress); err != nil {

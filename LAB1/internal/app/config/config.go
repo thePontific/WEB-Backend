@@ -10,20 +10,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-type RedisConfig struct {
-	Host        string
-	Port        int
-	Password    string
-	User        string
-	DialTimeout time.Duration
-	ReadTimeout time.Duration
-}
-
 type Config struct {
 	ServiceHost string
 	ServicePort int
 	JWTSecret   string
 	Redis       RedisConfig
+}
+
+type RedisConfig struct {
+	Host        string
+	Password    string
+	Port        int
+	User        string
+	DialTimeout time.Duration
+	ReadTimeout time.Duration
 }
 
 func NewConfig() (*Config, error) {

@@ -19,19 +19,17 @@ func (h *Handler) WithAuthCheck(allowedRoles ...role.Role) gin.HandlerFunc {
 
 		claims, ok := claimsVal.(*ds.JWTClaims)
 		if !ok {
-			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid claims"})
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid claims type"})
 			return
 		}
 
-		// Проверяем, есть ли роль пользователя в списке разрешённых
 		for _, r := range allowedRoles {
 			if claims.Role == r {
-				ctx.Next() // роль разрешена, продолжаем выполнение
+				ctx.Next()
 				return
 			}
 		}
 
-		// если роль не найдена в allowedRoles
 		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "access denied"})
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -14,60 +15,62 @@ import (
 	"LAB1/internal/app/config"
 	"LAB1/internal/app/dsn"
 	"LAB1/internal/app/handler"
+	"LAB1/internal/app/redis"
 	"LAB1/internal/app/repository"
 	"LAB1/internal/pkg"
-	"LAB1/internal/service"
 )
 
 // @title StarCart API
 // @version 1.0
 // @description Backend для управления заявками и звездами (Лабораторная 4)
 
-// @contact.name API Support
-// @contact.url https://example.com/support
-// @contact.email support@example.com
-
-// @license.name MIT
-// @license.url https://opensource.org/licenses/MIT
-
 // @host localhost:8080
-// @BasePath /api
-// @schemes http
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT Authorization header using the Bearer scheme. Example: "Bearer {token}"
+
 func main() {
+	ctx := context.Background()
 	router := gin.Default()
 
 	// Swagger UI
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Загружаем конфиг
+	// 1️⃣ Загружаем конфиг
 	conf, err := config.NewConfig()
 	if err != nil {
 		logrus.Fatalf("error loading config: %v", err)
 	}
 
-	// Строка подключения к PostgreSQL
+	// 2️⃣ Подключаем PostgreSQL
 	postgresString := dsn.FromEnv()
 	fmt.Println("Postgres:", postgresString)
 
-	// Репозиторий
 	rep, errRep := repository.New(postgresString)
 	if errRep != nil {
 		logrus.Fatalf("error initializing repository: %v", errRep)
 	}
 
-	// Сбрасываем все логические удаления при старте
 	if err := rep.ResetDeletedStars(); err != nil {
-		logrus.Errorf("Ошибка сброса удалённых звезд: %v", err)
+		logrus.Errorf("Ошибка сброса удалённых звёзд: %v", err)
 	}
 
-	// Сервис для работы с MinIO
-	minioService := service.NewMinioService()
+	// 3️⃣ Проверяем Redis-подключение
+	redisClient, err := redis.New(ctx, conf.Redis)
+	if err != nil {
+		logrus.Fatalf("Ошибка подключения Redis: %v", err)
+	}
 
-	// Создаём handler с секретом JWT из конфигурации
-	jwtSecret := conf.JWTSecret // строка из .env или конфигурации
-	hand := handler.NewHandler(rep, minioService, jwtSecret)
+	// 4️⃣ Создаём Handler
+	h := handler.NewHandler(rep, nil, redisClient, conf.JWTSecret) // nil → MinioService пока не используем
 
-	// Инициализация приложения
-	application := pkg.NewApp(conf, router, hand)
-	application.RunApp()
+	// 5️⃣ Регистрируем статику и маршруты
+	h.RegisterStatic(router)
+	h.RegisterRoutes(router)
+
+	// 6️⃣ Запускаем приложение через pkg.App
+	app := pkg.NewApp(ctx, conf, router, rep)
+	app.RunApp()
 }

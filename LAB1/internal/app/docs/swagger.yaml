@@ -37,34 +37,36 @@ definitions:
   ds.StarCart:
     properties:
       comment:
+        description: Пример поля предметной области
         type: string
-      creator:
-        allOf:
-        - $ref: '#/definitions/ds.User'
-        description: Связи
       creatorID:
-        description: Теперь UUID!
-        type: string
+        description: Создатель (пользователь)
+        type: integer
       dateCreate:
+        description: Дата создания
         type: string
       dateFinished:
+        description: Дата завершения заявки (действие модератора)
         type: string
       dateFormed:
+        description: Дата формирования заявки (действие создателя)
         type: string
       id:
+        description: ID заявки
         type: integer
       items:
+        description: Элементы заявки
         items:
           $ref: '#/definitions/ds.StarCartItem'
         type: array
-      moderator:
-        $ref: '#/definitions/ds.User'
       moderatorID:
-        description: И moderator тоже UUID
-        type: string
+        description: Модератор (nullable, пока не назначен)
+        type: integer
       priority:
+        description: пример дополнительного поля
         type: string
       status:
+        description: Статус
         type: string
     type: object
   ds.StarCartItem:
@@ -121,18 +123,6 @@ definitions:
       token_type:
         type: string
     type: object
-  handler.registerReq:
-    properties:
-      login:
-        type: string
-      password:
-        type: string
-    type: object
-  handler.registerResp:
-    properties:
-      ok:
-        type: boolean
-    type: object
   role.Role:
     enum:
     - 0
@@ -151,7 +141,6 @@ definitions:
     - Buyer
     - Manager
     - Admin
-host: localhost:8080
 info:
   contact: {}
   description: Backend для управления заявками и звездами (Лабораторная 4)
@@ -189,17 +178,15 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Получить список заявок (StarCart)
       tags:
       - StarCart
-  /api/starcart/{cartID}:
+  /api/starcart/{id}:
     delete:
       parameters:
       - description: ID заявки
         in: path
-        name: cartID
+        name: id
         required: true
         type: integer
       produces:
@@ -230,7 +217,7 @@ paths:
       parameters:
       - description: ID заявки
         in: path
-        name: cartID
+        name: id
         required: true
         type: integer
       produces:
@@ -247,130 +234,9 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Получить детали заявки
       tags:
       - StarCart
-  /api/starcart/{cartID}/finish:
-    put:
-      parameters:
-      - description: ID заявки
-        in: path
-        name: cartID
-        required: true
-        type: integer
-      - description: complete или reject
-        in: query
-        name: action
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/ds.StarCart'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Завершить заявку (одобрить/отклонить)
-      tags:
-      - StarCart
-  /api/starcart/{cartID}/form:
-    put:
-      parameters:
-      - description: ID заявки
-        in: path
-        name: cartID
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/ds.StarCart'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Сформировать заявку
-      tags:
-      - StarCart
-  /api/starcart/{cartID}/item/{id}:
-    put:
-      consumes:
-      - application/json
-      description: Изменяет количество, комментарий или скорость для конкретного элемента
-        в заявке
-      parameters:
-      - description: ID заявки
-        in: path
-        name: cartID
-        required: true
-        type: integer
-      - description: ID элемента в заявке
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Данные для обновления
-        in: body
-        name: item
-        required: true
-        schema:
-          $ref: '#/definitions/ds.StarCartItem'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Обновить элемент заявки (м-м связь)
-      tags:
-      - StarCartItem
-  /api/starcart/{id}:
     put:
       consumes:
       - application/json
@@ -404,6 +270,71 @@ paths:
               type: string
             type: object
       summary: Обновить позиции в заявке
+      tags:
+      - StarCart
+  /api/starcart/{id}/finish:
+    put:
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: complete или reject
+        in: query
+        name: action
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ds.StarCart'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Завершить заявку (одобрить/отклонить)
+      tags:
+      - StarCart
+  /api/starcart/{id}/form:
+    put:
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ds.StarCart'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Сформировать заявку
       tags:
       - StarCart
   /api/starcart/add:
@@ -481,6 +412,7 @@ paths:
     get:
       consumes:
       - application/json
+      description: Возвращает список всех звёзд или ищет по названию
       parameters:
       - description: Поиск по названию
         in: query
@@ -501,8 +433,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Получить список звёзд
       tags:
       - Stars
@@ -675,9 +605,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Логиним пользователя
       parameters:
-      - description: Данные для входа
+      - description: Login credentials
         in: body
         name: login
         required: true
@@ -690,12 +619,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.loginResp'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       summary: Вход пользователя
       tags:
       - Users
@@ -751,27 +674,47 @@ paths:
             type: object
       summary: Обновить данные пользователя
       tags:
-      - Users
-  /api/users/register:
-    post:
+      - User
+  /starcart/{cartID}/item/{id}:
+    put:
       consumes:
       - application/json
+      description: Изменяет количество, комментарий или скорость для конкретного элемента
+        в заявке
       parameters:
-      - description: Данные пользователя
+      - description: ID заявки
+        in: path
+        name: cartID
+        required: true
+        type: integer
+      - description: ID элемента в заявке
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления
         in: body
-        name: user
+        name: item
         required: true
         schema:
-          $ref: '#/definitions/handler.registerReq'
+          $ref: '#/definitions/ds.StarCartItem'
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/handler.registerResp'
+            additionalProperties:
+              type: string
+            type: object
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -782,14 +725,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Зарегистрировать нового пользователя
+      summary: Обновить элемент заявки (м-м связь)
       tags:
-      - Users
-securityDefinitions:
-  BearerAuth:
-    description: 'JWT Authorization header using the Bearer scheme. Example: "Bearer
-      {token}"'
-    in: header
-    name: Authorization
-    type: apiKey
+      - StarCartItem
 swagger: "2.0"
